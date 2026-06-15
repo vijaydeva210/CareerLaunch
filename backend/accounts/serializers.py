@@ -36,5 +36,14 @@ class RegisterSerializers(serializers.ModelSerializer):
             branch=branch,
             graduation_year=graduation_year
         )
-        
         return user
+
+class ProfileSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username', read_only=True)
+    email = serializers.CharField(source='user.email',read_only=True)
+
+    class Meta:
+        model = StudentProfile
+        fields = ['username', 'email', 'phone', 'college', 'branch', 'graduation_year']
+
+        
