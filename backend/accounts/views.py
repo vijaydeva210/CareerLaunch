@@ -1,5 +1,5 @@
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.generics import RetrieveUpdateAPIView
+from rest_framework.generics import RetrieveUpdateAPIView, ListAPIView
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from .models import StudentProfile
 from .serializers import RegisterSerializers, ProfileSerializer
 from rest_framework.views import APIView
@@ -21,3 +21,7 @@ class UserProfileView(RetrieveUpdateAPIView):
     def get_object(self):
         profile, created = StudentProfile.objects.get_or_create(user=self.request.user)
         return profile
+class AdminStudentListView(ListAPIView):
+    permission_classes = [IsAdminUser]
+    queryset = StudentProfile.objects.all()
+    serializer_class = ProfileSerializer

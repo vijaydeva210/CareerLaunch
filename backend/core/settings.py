@@ -131,7 +131,11 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-CORS_ALLOWED_ORIGINS=[
+#Resume storage configuration
+MEDIA_URL= '/media/'
+MEDIA_ROOT = BASE_DIR/'media'
+
+CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
 ]

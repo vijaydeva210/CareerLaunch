@@ -44,6 +44,5 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StudentProfile
-        fields = ['username', 'email', 'phone', 'college', 'branch', 'graduation_year']
+        fields = ['username', 'email', 'phone', 'college', 'branch', 'graduation_year','resume']
 
-        
