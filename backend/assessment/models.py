@@ -81,7 +81,7 @@ class StudentAnswer(models.Model):
     question = models.ForeignKey(QuestionBank, on_delete=models.CASCADE)
     
     # null=True in case the student skipped the question
-    selected_option = models.CharField(max_length=1, choices=QuestionBank.CORRECT_OPTIONS, null=True, blank=True)
+    selected_option = models.CharField(max_length=20, choices=QuestionBank.CORRECT_OPTIONS, null=True, blank=True)
     is_correct = models.BooleanField(default=False)
 
     def __str__(self):
