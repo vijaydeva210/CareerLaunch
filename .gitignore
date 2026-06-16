@@ -1,0 +1,19 @@
+# Python & Django
+__pycache__/
+*.py[cod]
+venv/
+env/
+*.sqlite3
+media/
+.env
+backend/.env
+
+# React Frontend
+node_modules/
+dist/
+build/
+frontend/.env
+
+# System
+.DS_Store
+Thumbs.db

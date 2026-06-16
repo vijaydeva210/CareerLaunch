@@ -40,6 +40,7 @@ INSTALLED_APPS = [
 
     # custom apps to unblock external requests
     'rest_framework',
+    'rest_framework_simplejwt'
     'corsheaders',
     # CareerLaunch Apps
     'accounts',
@@ -50,7 +51,6 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    #edited here
     'corsheaders.middleware.CorsMiddleware',
 
     'django.middleware.common.CommonMiddleware',
@@ -131,15 +131,28 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-CORS_ALLOWED_ORIGINS=[
+#Resume storage configuration
+MEDIA_URL= '/media/'
+MEDIA_ROOT = BASE_DIR/'media'
+
+CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
 ]
 
+<<<<<<< HEAD
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ),
+=======
+#REST FRAMEWORK CONFIGURATION
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES':(
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication'
+    )
+>>>>>>> main
 }
