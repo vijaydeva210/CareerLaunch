@@ -9,5 +9,6 @@ class StudentProfile(models.Model):
     college = models.CharField(max_length=250, blank=True, null=True)
     branch = models.CharField(max_length=150, blank=True, null=True)
     graduation_year = models.IntegerField(blank=True, null=True)
+    resume = models.FileField(upload_to='resumes/', null=True, blank=True)
     def __str__(self):
         return f"{self.user.username}'s Profile"
