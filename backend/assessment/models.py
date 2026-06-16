@@ -107,3 +107,14 @@ class LearningQuestion(models.Model):
 
     def __str__(self):
         return f"[LEARN - {self.get_category_display()}] {self.question_text[:50]}..."
+
+class LearnedQuestion(models.Model):
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='learned_questions')
+    question = models.ForeignKey(QuestionBank, on_delete=models.CASCADE, related_name='learned_by_students')
+    completed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('student', 'question')
+
+    def __str__(self):
+        return f"{self.student} learned Q{self.question.id}"

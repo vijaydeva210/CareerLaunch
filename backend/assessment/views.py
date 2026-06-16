@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework.generics import ListAPIView
 from .serializers import AssessmentListSerializer
 
-from .models import Subject, Assessment, AssessmentResult, StudentAnswer
+from .models import Subject, Assessment, AssessmentResult, StudentAnswer, LearnedQuestion, QuestionBank
 from .serializers import AssessmentDetailSerializer
 
 
@@ -159,3 +159,34 @@ class AssessmentListView(ListAPIView):
     queryset = Assessment.objects.filter(is_active=True)
     serializer_class = AssessmentListSerializer
     permission_classes = [IsAuthenticated]
+
+class LearnedQuestionView(APIView):
+    """
+    Handles the 'LEARN' phase of the Master Blueprint.
+    GET: Returns a simple array of question IDs the student has marked as completed.
+    POST: Marks a question as learned (or unmarks it if already learned).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        # Returns [1, 4, 5, 9] so React knows which checkboxes to show as "checked"
+        learned_ids = LearnedQuestion.objects.filter(student=request.user).values_list('question_id', flat=True)
+        return Response({"learned_question_ids": list(learned_ids)}, status=status.HTTP_200_OK)
+
+    def post(self, request, *args, **kwargs):
+        question_id = request.data.get('question_id')
+        
+        if not question_id:
+            return Response({"error": "question_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        question = get_object_or_404(QuestionBank, id=question_id)
+        
+        # get_or_create checks if it exists. If it does, it fetches it. If not, it creates it.
+        learned_record, created = LearnedQuestion.objects.get_or_create(student=request.user, question=question)
+
+        if created:
+            return Response({"message": "Question marked as completed.", "status": "learned"}, status=status.HTTP_201_CREATED)
+        else:
+            # If they click the checkbox again, we un-mark it (delete the record)
+            learned_record.delete()
+            return Response({"message": "Question unmarked.", "status": "unlearned"}, status=status.HTTP_200_OK)

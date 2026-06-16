@@ -1,16 +1,15 @@
 from django.urls import path
-from .views import SubmitAssessmentView, AssessmentDetailView, MyProgressView, AssessmentListView
+from .views import SubmitAssessmentView, AssessmentDetailView, MyProgressView, AssessmentListView, LearnedQuestionView
 
 urlpatterns = [
-    # 1. The NEW endpoint fot the DashBoard: /api/assessments/list/
-    path('list/', AssessmentListView.as_view(), name='assessment-list'),
+    #The learn phase
+    path('learned/', LearnedQuestionView.as_view(), name='learned-questions'),
 
-    # 2. The Test Fetcher (GET) - E.g., /api/assessments/test/1/
+    # The test phase
+    path('list/', AssessmentListView.as_view(), name='assessment-list'),
     path('test/<int:pk>/', AssessmentDetailView.as_view(), name='assessment-detail'),
-    
-    # 3. The Grading Engine (POST) - E.g., /api/assessments/submit/
     path('submit/', SubmitAssessmentView.as_view(), name='submit-assessment'),
     
-    # 4. The Progress Engine (GET) - E.g., /api/assessments/my-progress/
+    # The ready phase
     path('my-progress/', MyProgressView.as_view(), name='my-progress'),
 ]
