@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.db import models
 
 class Subject(models.Model):
     SUBJECT_TYPES = (
@@ -118,3 +119,26 @@ class LearnedQuestion(models.Model):
 
     def __str__(self):
         return f"{self.student} learned Q{self.question.id}"
+
+# Table 1: For the LearnArena (No options, just concepts)
+class StudyTopic(models.Model):
+    subject = models.CharField(max_length=100) # e.g., "Python", "React"
+    topic_text = models.CharField(max_length=500) # e.g., "What is a JWT?"
+    
+    def __str__(self):
+        return f"{self.subject}: {self.topic_text}"
+
+# Table 2: For the TestArena (Full MCQ setup)
+class TestQuestion(models.Model):
+    subject = models.CharField(max_length=100)
+    question_text = models.TextField()
+    option_a = models.CharField(max_length=255)
+    option_b = models.CharField(max_length=255)
+    option_c = models.CharField(max_length=255)
+    option_d = models.CharField(max_length=255)
+    
+    # Stores just 'A', 'B', 'C', or 'D'
+    correct_option = models.CharField(max_length=1) 
+    
+    def __str__(self):
+        return f"{self.subject} Question: {self.question_text[:30]}..."

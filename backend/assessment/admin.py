@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import Subject, Company, QuestionBank, Assessment, AssessmentResult, StudentAnswer, LearningQuestion
+from import_export.admin import ImportExportModelAdmin
+from .models import Subject, Company, QuestionBank, Assessment, AssessmentResult, StudentAnswer, LearningQuestion, StudyTopic, TestQuestion
 
 @admin.register(Subject)
 class SubjectAdmin(admin.ModelAdmin):
@@ -12,8 +13,9 @@ class CompanyAdmin(admin.ModelAdmin):
     list_display = ('name',)
     search_fields = ('name',)
 
+# UPGRADED FOR EXCEL IMPORTS
 @admin.register(QuestionBank)
-class QuestionBankAdmin(admin.ModelAdmin):
+class QuestionBankAdmin(ImportExportModelAdmin):
     list_display = ('get_short_question', 'category', 'subject', 'company', 'correct_option')
     list_filter = ('category', 'subject', 'company')
     search_fields = ('question_text',)
@@ -24,8 +26,9 @@ class QuestionBankAdmin(admin.ModelAdmin):
         return obj.question_text
     get_short_question.short_description = 'Question'
 
+# UPGRADED FOR EXCEL IMPORTS
 @admin.register(Assessment)
-class AssessmentAdmin(admin.ModelAdmin):
+class AssessmentAdmin(ImportExportModelAdmin):
     list_display = ('title', 'subject', 'total_marks', 'passing_marks', 'is_active')
     list_filter = ('subject', 'is_active')
     search_fields = ('title',)
@@ -43,8 +46,9 @@ class AssessmentResultAdmin(admin.ModelAdmin):
     search_fields = ('student__username', 'assessment__title')
     inlines = [StudentAnswerInline]
 
+# UPGRADED FOR EXCEL IMPORTS
 @admin.register(LearningQuestion)
-class LearningQuestionAdmin(admin.ModelAdmin):
+class LearningQuestionAdmin(ImportExportModelAdmin):
     list_display = ('get_short_question', 'category', 'subject', 'company')
     list_filter = ('category', 'subject', 'company')
     search_fields = ('question_text', 'answer_text')
@@ -54,3 +58,12 @@ class LearningQuestionAdmin(admin.ModelAdmin):
             return obj.question_text[:60] + '...'
         return obj.question_text
     get_short_question.short_description = 'Study Question'
+
+# The new ones we just made (Kept here so your code doesn't crash)
+@admin.register(StudyTopic)
+class StudyTopicAdmin(ImportExportModelAdmin):
+    list_display = ('id', 'subject', 'topic_text')
+
+@admin.register(TestQuestion)
+class TestQuestionAdmin(ImportExportModelAdmin):
+    list_display = ('id', 'subject', 'question_text', 'correct_option')

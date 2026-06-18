@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     # CareerLaunch Apps
+    'import_export',
     'accounts',
     'assessment',
     
