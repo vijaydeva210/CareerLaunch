@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     # CareerLaunch Apps
+    'import_export',
     'accounts',
     'assessment',
     
@@ -87,7 +88,7 @@ DATABASES = {
         'ENGINE':'django.db.backends.mysql',
         'NAME':'careerlaunch',
         'USER':'root',
-        'PASSWORD':'vijay-74',
+        'PASSWORD':'d@123',
         'HOST':'localhost',
         'PORT':'3306',
     }
