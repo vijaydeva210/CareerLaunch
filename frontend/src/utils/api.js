@@ -1,6 +1,6 @@
 import axios from 'axios';
 const api = axios.create({
-    baseURL: 'https://127.0.0.1:8000/api',
+    baseURL: 'http://127.0.0.1:8000/api',
 })
 api.interceptors.request.use(
     (config) =>{
@@ -13,4 +13,4 @@ api.interceptors.request.use(
         return Promise.reject(error);
     }
 );
-export default api;
+export default api; 
