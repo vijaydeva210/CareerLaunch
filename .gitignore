@@ -17,3 +17,8 @@ frontend/.env
 # System
 .DS_Store
 Thumbs.db
+
+# Block Python Cache and Test Files
+__pycache__/
+*.pyc
+docs/test.csv
