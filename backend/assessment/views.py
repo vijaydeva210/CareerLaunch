@@ -1,12 +1,14 @@
 from rest_framework.views import APIView
 from rest_framework.generics import RetrieveAPIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser # <-- NEW: Added IsAdminUser
+from rest_framework.parsers import MultiPartParser # <-- NEW: Added for file uploads
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from rest_framework.generics import ListAPIView
-from .serializers import AssessmentListSerializer
+from tablib import Dataset # <-- NEW: Added for CSV parsing
 
+from .serializers import AssessmentListSerializer
 from .models import Subject, Assessment, AssessmentResult, StudentAnswer, LearnedQuestion, QuestionBank
 from .serializers import AssessmentDetailSerializer
 
@@ -150,7 +152,6 @@ class MyProgressView(APIView):
         })
     
 
-
 class AssessmentListView(ListAPIView):
     """
     Returns a lightweight list of all active assessments for the dashboard.
@@ -159,6 +160,7 @@ class AssessmentListView(ListAPIView):
     queryset = Assessment.objects.filter(is_active=True)
     serializer_class = AssessmentListSerializer
     permission_classes = [IsAuthenticated]
+
 
 class LearnedQuestionView(APIView):
     """
@@ -190,3 +192,48 @@ class LearnedQuestionView(APIView):
             # If they click the checkbox again, we un-mark it (delete the record)
             learned_record.delete()
             return Response({"message": "Question unmarked.", "status": "unlearned"}, status=status.HTTP_200_OK)
+
+
+# ---------------------------------------------------------
+# 6. CARGO ENGINE (POST)
+# Allows Admins to upload a CSV to bulk-import assessments
+# ---------------------------------------------------------
+class ImportAssessmentCSVView(APIView):
+    permission_classes = [IsAdminUser] 
+    parser_classes = [MultiPartParser] 
+
+    def post(self, request, *args, **kwargs):
+        file_obj = request.FILES.get('file')
+        
+        if not file_obj:
+            return Response({"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        if not file_obj.name.endswith('.csv'):
+            return Response({"error": "File must be a CSV format"}, status=status.HTTP_400_BAD_REQUEST)
+
+        dataset = Dataset()
+        try:
+            # Decode the file and load into tablib dataset
+            imported_data = dataset.load(file_obj.read().decode('utf-8'), format='csv')
+        except Exception as e:
+            return Response({"error": f"Failed to parse CSV file. Ensure it is valid UTF-8. Error: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        success_count = 0
+        
+        for row in imported_data.dict:
+            try:
+                Assessment.objects.create(
+                    title=row['title'],
+                    subject_id=row['subject_id'],
+                    questions=row['questions'],
+                    total_marks=row['total_marks'],
+                    passing_marks=row['passing_marks'],
+                    # Convert JS strings "true"/"false" to Python Booleans if needed
+                    is_active=str(row['is_active']).lower() in ['true', '1', 't', 'y', 'yes']
+                )
+                success_count += 1
+            except Exception as e:
+                print(f"Failed to import row: {row} - Error: {e}")
+                continue
+
+        return Response({"message": f"Successfully imported {success_count} rows."}, status=status.HTTP_201_CREATED)
