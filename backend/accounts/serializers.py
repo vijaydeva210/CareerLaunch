@@ -11,7 +11,7 @@ class RegisterSerializers(serializers.ModelSerializer):
     
     class Meta:
         model = User
-        fields = ['username', 'email', 'password', 'phone', 'college', 'branch', 'graduation_year']
+        fields = ['id', 'username', 'email', 'password', 'phone', 'college', 'branch', 'graduation_year']
         extra_kwargs = {'password':{'write_only':True}}
 
     def create(self, validated_data):
@@ -27,7 +27,8 @@ class RegisterSerializers(serializers.ModelSerializer):
             email=validated_data.get('email',''),
             password=validated_data['password']
         )
-
+        user.is_active = True
+        user.save()
         # Linked StudentProfile
         StudentProfile.objects.create(
             user=user,
@@ -44,5 +45,5 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StudentProfile
-        fields = ['username', 'email', 'phone', 'college', 'branch', 'graduation_year','resume']
+        fields = ['id', 'username', 'email', 'phone', 'college', 'branch', 'graduation_year','resume']
 

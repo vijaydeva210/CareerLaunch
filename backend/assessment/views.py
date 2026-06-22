@@ -1,21 +1,21 @@
+import csv
+import io
 from rest_framework.views import APIView
-from rest_framework.generics import RetrieveAPIView
+from rest_framework.generics import RetrieveAPIView, ListAPIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, IsAdminUser # <-- NEW: Added IsAdminUser
-from rest_framework.parsers import MultiPartParser # <-- NEW: Added for file uploads
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.parsers import MultiPartParser
 from rest_framework import status
 from django.shortcuts import get_object_or_404
-from rest_framework.generics import ListAPIView
-from tablib import Dataset # <-- NEW: Added for CSV parsing
+from tablib import Dataset
 
-from .serializers import AssessmentListSerializer
-from .models import Subject, Assessment, AssessmentResult, StudentAnswer, LearnedQuestion, QuestionBank
-from .serializers import AssessmentDetailSerializer
+from .serializers import AssessmentListSerializer, AssessmentDetailSerializer
+# --- FIX 1: Added LearningQuestion to the imports ---
+from .models import Subject, Assessment, AssessmentResult, StudentAnswer, LearnedQuestion, QuestionBank, LearningQuestion
 
 
 # ---------------------------------------------------------
 # 1. TEST FETCHER (GET)
-# Sends the test and secure questions to the React frontend
 # ---------------------------------------------------------
 class AssessmentDetailView(RetrieveAPIView):
     queryset = Assessment.objects.filter(is_active=True)
@@ -25,7 +25,6 @@ class AssessmentDetailView(RetrieveAPIView):
 
 # ---------------------------------------------------------
 # 2. GRADING ENGINE (POST)
-# Receives student answers, grades them, and saves the result
 # ---------------------------------------------------------
 class SubmitAssessmentView(APIView):
     permission_classes = [IsAuthenticated]
@@ -33,14 +32,12 @@ class SubmitAssessmentView(APIView):
     def post(self, request, *args, **kwargs):
         student = request.user
         
-        # 1. Extract data from the frontend JSON payload
         assessment_id = request.data.get('assessment_id')
-        answers_data = request.data.get('answers', []) # Expected format: [{"question_id": 1, "selected_option": "A"}, ...]
+        answers_data = request.data.get('answers', []) 
 
         if not assessment_id:
             return Response({"error": "assessment_id is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 2. Fetch the test and its questions safely
         assessment = get_object_or_404(Assessment, id=assessment_id, is_active=True)
         questions = assessment.questions.all()
         total_questions = questions.count()
@@ -48,35 +45,29 @@ class SubmitAssessmentView(APIView):
         if total_questions == 0:
             return Response({"error": "This test has no questions."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 3. Calculate math: How many marks is one question worth?
         marks_per_question = assessment.total_marks / total_questions
         earned_score = 0
         correct_count = 0
 
-        # 4. Create the initial Result record
         result = AssessmentResult.objects.create(
             student=student,
             assessment=assessment,
-            score=0, # Placeholder, will update below
+            score=0, 
             passed=False
         )
 
-        # Convert React's answer list into a dictionary for fast lookup: {question_id: "A"}
         frontend_answers = {item.get('question_id'): item.get('selected_option') for item in answers_data}
         student_answers_to_create = []
 
-        # 5. The Grading Loop
         for question in questions:
             selected_option = frontend_answers.get(question.id)
             is_correct = False
 
-            # Check if they answered it AND if it is correct
             if selected_option and selected_option == question.correct_option:
                 is_correct = True
                 correct_count += 1
                 earned_score += marks_per_question
 
-            # Prepare the granular answer record for the database
             student_answers_to_create.append(
                 StudentAnswer(
                     result=result,
@@ -86,10 +77,8 @@ class SubmitAssessmentView(APIView):
                 )
             )
 
-        # Bulk create all the answer records at once (highly optimized for the database)
         StudentAnswer.objects.bulk_create(student_answers_to_create)
 
-        # 6. Finalize the score and save
         final_score = round(earned_score)
         passed = final_score >= assessment.passing_marks
         
@@ -97,7 +86,6 @@ class SubmitAssessmentView(APIView):
         result.passed = passed
         result.save()
 
-        # 7. Return the final result to React
         return Response({
             "message": "Test successfully graded.",
             "assessment_title": assessment.title,
@@ -110,22 +98,18 @@ class SubmitAssessmentView(APIView):
 
 # ---------------------------------------------------------
 # 3. PROGRESS ENGINE (GET)
-# Calculates overall technical readiness for the dashboard
 # ---------------------------------------------------------
 class MyProgressView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
         user = request.user
-        
-        # Fetch strictly 'technical' subjects (ignores Aptitude/HR)
         technical_subjects = Subject.objects.filter(subject_type='technical')
         
         total_progress = 0.0
         subject_breakdown = []
 
         for subject in technical_subjects:
-            # Find the student's highest score for this subject
             best_result = AssessmentResult.objects.filter(
                 student=user,
                 assessment__subject=subject
@@ -153,25 +137,39 @@ class MyProgressView(APIView):
     
 
 class AssessmentListView(ListAPIView):
-    """
-    Returns a lightweight list of all active assessments for the dashboard.
-    Does NOT include the questions.
-    """
     queryset = Assessment.objects.filter(is_active=True)
     serializer_class = AssessmentListSerializer
     permission_classes = [IsAuthenticated]
 
+# ---------------------------------------------------------
+# 4. LEARN ARENA DATA FETCHER (GET)
+# Sends the imported study concepts to the React frontend
+# ---------------------------------------------------------
+class LearningQuestionListView(APIView):
+    permission_classes = [IsAuthenticated]
 
+    def get(self, request):
+        # Fetch all study concepts from the database
+        questions = LearningQuestion.objects.select_related('subject').all()
+        
+        # Package them into a clean list for React
+        data = []
+        for q in questions:
+            data.append({
+                "id": q.id,
+                "subject": q.subject.name if q.subject else "General",
+                "text": q.question_text
+            })
+            
+        return Response(data, status=status.HTTP_200_OK)
+
+# ---------------------------------------------------------
+# 5. LEARN ARENA TRACKER
+# ---------------------------------------------------------
 class LearnedQuestionView(APIView):
-    """
-    Handles the 'LEARN' phase of the Master Blueprint.
-    GET: Returns a simple array of question IDs the student has marked as completed.
-    POST: Marks a question as learned (or unmarks it if already learned).
-    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        # Returns [1, 4, 5, 9] so React knows which checkboxes to show as "checked"
         learned_ids = LearnedQuestion.objects.filter(student=request.user).values_list('question_id', flat=True)
         return Response({"learned_question_ids": list(learned_ids)}, status=status.HTTP_200_OK)
 
@@ -181,22 +179,20 @@ class LearnedQuestionView(APIView):
         if not question_id:
             return Response({"error": "question_id is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        question = get_object_or_404(QuestionBank, id=question_id)
+        # --- FIX 2: Checkboxes now correctly point to LearningQuestion ---
+        question = get_object_or_404(LearningQuestion, id=question_id)
         
-        # get_or_create checks if it exists. If it does, it fetches it. If not, it creates it.
         learned_record, created = LearnedQuestion.objects.get_or_create(student=request.user, question=question)
 
         if created:
             return Response({"message": "Question marked as completed.", "status": "learned"}, status=status.HTTP_201_CREATED)
         else:
-            # If they click the checkbox again, we un-mark it (delete the record)
             learned_record.delete()
             return Response({"message": "Question unmarked.", "status": "unlearned"}, status=status.HTTP_200_OK)
 
 
 # ---------------------------------------------------------
 # 6. CARGO ENGINE (POST)
-# Allows Admins to upload a CSV to bulk-import assessments
 # ---------------------------------------------------------
 class ImportAssessmentCSVView(APIView):
     permission_classes = [IsAdminUser] 
@@ -204,36 +200,65 @@ class ImportAssessmentCSVView(APIView):
 
     def post(self, request, *args, **kwargs):
         file_obj = request.FILES.get('file')
+        subject_name = request.data.get('subject') 
+        upload_type = request.data.get('type')     
         
-        if not file_obj:
-            return Response({"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST)
+        if not file_obj or not subject_name or not upload_type:
+            return Response({"error": "Missing file, subject, or upload type."}, status=status.HTTP_400_BAD_REQUEST)
             
         if not file_obj.name.endswith('.csv'):
-            return Response({"error": "File must be a CSV format"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "File must be a CSV format."}, status=status.HTTP_400_BAD_REQUEST)
 
-        dataset = Dataset()
         try:
-            # Decode the file and load into tablib dataset
-            imported_data = dataset.load(file_obj.read().decode('utf-8'), format='csv')
-        except Exception as e:
-            return Response({"error": f"Failed to parse CSV file. Ensure it is valid UTF-8. Error: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+            subject, _ = Subject.objects.get_or_create(name=subject_name)
 
-        success_count = 0
-        
-        for row in imported_data.dict:
-            try:
-                Assessment.objects.create(
-                    title=row['title'],
-                    subject_id=row['subject_id'],
-                    questions=row['questions'],
-                    total_marks=row['total_marks'],
-                    passing_marks=row['passing_marks'],
-                    # Convert JS strings "true"/"false" to Python Booleans if needed
-                    is_active=str(row['is_active']).lower() in ['true', '1', 't', 'y', 'yes']
+            decoded_file = file_obj.read().decode('utf-8-sig')
+            io_string = io.StringIO(decoded_file)
+            reader = csv.DictReader(io_string)
+
+            success_count = 0
+
+            if upload_type == 'learn':
+                # --- FIX 3: Push Study Concepts to the correct table & field ---
+                for row in reader:
+                    LearningQuestion.objects.create(
+                        subject=subject,
+                        question_text=row.get('concept_text', '') 
+                    )
+                    success_count += 1
+                    
+            elif upload_type == 'test':
+                # --- FIX 4: Correct ManyToMany relation mapping ---
+                assessment, _ = Assessment.objects.get_or_create(
+                    subject=subject,
+                    defaults={'title': f"{subject.name} Assessment", 'total_marks': 100, 'passing_marks': 50}
                 )
-                success_count += 1
-            except Exception as e:
-                print(f"Failed to import row: {row} - Error: {e}")
-                continue
+                
+                for row in reader:
+                    # Create the multiple choice question
+                    q = QuestionBank.objects.create(
+                        subject=subject,
+                        question_text=row.get('question_text', ''),
+                        option_a=row.get('option_a', ''),
+                        option_b=row.get('option_b', ''),
+                        option_c=row.get('option_c', ''),
+                        option_d=row.get('option_d', ''),
+                        correct_option=row.get('correct_answer', '').upper() 
+                    )
+                    # Attach the question to the Assessment container
+                    assessment.questions.add(q)
+                    success_count += 1
+            else:
+                return Response({"error": "Invalid upload type."}, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response({"message": f"Successfully imported {success_count} rows."}, status=status.HTTP_201_CREATED)
+            return Response({"message": f"Successfully imported {success_count} rows into {subject_name}."}, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            import traceback
+            print("================ CRITICAL CSV ERROR ================")
+            traceback.print_exc() 
+            print("====================================================")
+            
+            return Response({
+                "error": f"Database rejected the data: {str(e)}"
+            }, status=status.HTTP_400_BAD_REQUEST)

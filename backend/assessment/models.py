@@ -1,7 +1,9 @@
 from django.db import models
 from django.conf import settings
-from django.db import models
 
+# ==========================================
+# 1. CORE CATEGORIES
+# ==========================================
 class Subject(models.Model):
     SUBJECT_TYPES = (
         ('technical', 'Technical'),
@@ -23,14 +25,56 @@ class Company(models.Model):
         return self.name
 
 
+# ==========================================
+# 2. THE LEARN ARENA (Study Concepts)
+# ==========================================
+class LearningQuestion(models.Model):
+    """
+    STRICTLY for the study/learning section. No A/B/C/D options.
+    """
+    CATEGORY_CHOICES = (
+        ('technical', 'Technical'),
+        ('hr', 'HR'),
+        ('company', 'Company-Specific'),
+    )
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='learning_questions', null=True, blank=True)
+    company = models.ForeignKey(Company, on_delete=models.SET_NULL, null=True, blank=True, related_name='learning_questions')
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='technical')
+    
+    question_text = models.TextField(help_text="e.g., What is the virtual DOM in React?")
+    answer_text = models.TextField(help_text="Detailed explanation for the student.", blank=True, null=True)
+
+    def __str__(self):
+        return f"[LEARN] {self.question_text[:50]}..."
+
+
+class LearnedQuestion(models.Model):
+    """ Tracks which study concepts the student has marked as completed """
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='learned_questions')
+    # FIX: Now points correctly to LearningQuestion!
+    question = models.ForeignKey(LearningQuestion, on_delete=models.CASCADE, related_name='learned_by_students')
+    completed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('student', 'question')
+
+    def __str__(self):
+        return f"{self.student.username} learned Q{self.question.id}"
+
+
+# ==========================================
+# 3. THE ASSESSMENT ARENA (Multiple Choice)
+# ==========================================
 class QuestionBank(models.Model):
+    """
+    The MCQ database for Tests and Assessments.
+    """
     CATEGORY_CHOICES = (
         ('technical', 'Technical'),
         ('aptitude', 'Aptitude'),
         ('hr', 'HR'),
         ('company', 'Company-Specific'),
     )
-    
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='questions', null=True, blank=True)
     company = models.ForeignKey(Company, on_delete=models.SET_NULL, null=True, blank=True, related_name='questions')
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='technical')
@@ -51,15 +95,15 @@ class QuestionBank(models.Model):
     explanation = models.TextField(blank=True, null=True, help_text="Why is this answer correct?")
 
     def __str__(self):
-        return f"[{self.get_category_display()}] {self.question_text[:50]}..."
+        return f"[TEST] {self.question_text[:50]}..."
 
 
 class Assessment(models.Model):
     title = models.CharField(max_length=200)
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='assessments')
     questions = models.ManyToManyField(QuestionBank, related_name='assessments')
-    total_marks = models.PositiveIntegerField(help_text="Total possible score")
-    passing_marks = models.PositiveIntegerField(help_text="Minimum score to pass")
+    total_marks = models.PositiveIntegerField(help_text="Total possible score", default=100)
+    passing_marks = models.PositiveIntegerField(help_text="Minimum score to pass", default=50)
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
@@ -74,71 +118,14 @@ class AssessmentResult(models.Model):
     completed_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"User ID {self.student_id} - {self.assessment.title}: {self.score}"
+        return f"{self.student.username} - {self.assessment.title}: {self.score}"
 
 
 class StudentAnswer(models.Model):
     result = models.ForeignKey(AssessmentResult, on_delete=models.CASCADE, related_name='answers')
     question = models.ForeignKey(QuestionBank, on_delete=models.CASCADE)
-    
-    # null=True in case the student skipped the question
     selected_option = models.CharField(max_length=20, choices=QuestionBank.CORRECT_OPTIONS, null=True, blank=True)
     is_correct = models.BooleanField(default=False)
 
     def __str__(self):
         return f"Answer for Q{self.question.id} (Result: {self.result.id})"
-
-class LearningQuestion(models.Model):
-    """
-    This model is STRICTLY for the study/learning section. 
-    No A/B/C/D options. Just a descriptive question and a detailed answer.
-    """
-    CATEGORY_CHOICES = (
-        ('technical', 'Technical'),
-        ('hr', 'HR'),
-        ('company', 'Company-Specific'),
-    )
-    
-    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='learning_questions', null=True, blank=True)
-    company = models.ForeignKey(Company, on_delete=models.SET_NULL, null=True, blank=True, related_name='learning_questions')
-    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='technical')
-    
-    question_text = models.TextField(help_text="e.g., What is the virtual DOM in React?")
-    answer_text = models.TextField(help_text="Detailed explanation for the student to read.")
-
-    def __str__(self):
-        return f"[LEARN - {self.get_category_display()}] {self.question_text[:50]}..."
-
-class LearnedQuestion(models.Model):
-    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='learned_questions')
-    question = models.ForeignKey(QuestionBank, on_delete=models.CASCADE, related_name='learned_by_students')
-    completed_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        unique_together = ('student', 'question')
-
-    def __str__(self):
-        return f"{self.student} learned Q{self.question.id}"
-
-# Table 1: For the LearnArena (No options, just concepts)
-class StudyTopic(models.Model):
-    subject = models.CharField(max_length=100) # e.g., "Python", "React"
-    topic_text = models.CharField(max_length=500) # e.g., "What is a JWT?"
-    
-    def __str__(self):
-        return f"{self.subject}: {self.topic_text}"
-
-# Table 2: For the TestArena (Full MCQ setup)
-class TestQuestion(models.Model):
-    subject = models.CharField(max_length=100)
-    question_text = models.TextField()
-    option_a = models.CharField(max_length=255)
-    option_b = models.CharField(max_length=255)
-    option_c = models.CharField(max_length=255)
-    option_d = models.CharField(max_length=255)
-    
-    # Stores just 'A', 'B', 'C', or 'D'
-    correct_option = models.CharField(max_length=1) 
-    
-    def __str__(self):
-        return f"{self.subject} Question: {self.question_text[:30]}..."

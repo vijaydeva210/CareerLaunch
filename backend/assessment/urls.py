@@ -1,8 +1,9 @@
 from django.urls import path
-from .views import SubmitAssessmentView, AssessmentDetailView, MyProgressView, AssessmentListView, LearnedQuestionView, ImportAssessmentCSVView
+from .views import SubmitAssessmentView, AssessmentDetailView, MyProgressView, AssessmentListView, LearnedQuestionView, ImportAssessmentCSVView, LearningQuestionListView
 
 urlpatterns = [
     #The learn phase
+    path('learn-concepts/', LearningQuestionListView.as_view(), name='learn-concepts'),
     path('learned/', LearnedQuestionView.as_view(), name='learned-questions'),
 
     # The test phase

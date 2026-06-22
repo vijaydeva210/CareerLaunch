@@ -1,1 +1,0 @@
-export default function ProgressStub() { return <div className="text-3xl text-gray-800 font-bold">📈 Progress Module (Coming Soon)</div>; }

@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.admin import UserAdmin as AuthUserAdmin
 from .models import StudentProfile
 
+
 # 1. Tell Django how we want the profile data to look
 class StudentProfileInline(admin.StackedInline):
     model = StudentProfile

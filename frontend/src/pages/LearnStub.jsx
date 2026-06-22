@@ -1,1 +1,0 @@
-export default function LearnStub() { return <div className="text-3xl text-gray-800 font-bold">📚 Learn Module (Coming Soon)</div>; }
