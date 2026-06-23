@@ -122,3 +122,12 @@ class ResumeDownloadView(APIView):
         response = FileResponse(profile.resume.open('rb'), content_type='application/pdf')
         response['Content-Disposition'] = 'inline; filename="my_resume.pdf"'
         return response
+
+class ToggleStudentStatusView(APIView):
+    def patch(self, request, pk):
+        student_profile = get_object_or_404(StudentProfile, id=pk)
+        user = student_profile.user
+        user.is_active = not user.is_active
+        user.save()
+        status_text = "Activated" if user.is_active else "Suspended"
+        return Response({"message": f"Student {status_text} successfully", "is_active": user.is_active}, status=status.HTTP_200_OK)

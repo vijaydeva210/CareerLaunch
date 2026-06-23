@@ -1,5 +1,13 @@
 from django.urls import path
-from .views import SubmitAssessmentView, AssessmentDetailView, MyProgressView, AssessmentListView, LearnedQuestionView, ImportAssessmentCSVView, LearningQuestionListView
+from .views import (SubmitAssessmentView,
+                    AssessmentDetailView,
+                    MyProgressView,
+                    AssessmentListView, 
+                    LearnedQuestionView, 
+                    ImportAssessmentCSVView, 
+                    LearningQuestionListView,
+                    SubjectListView
+)
 
 urlpatterns = [
     #The learn phase
@@ -14,4 +22,5 @@ urlpatterns = [
     # The ready phase
     path('my-progress/', MyProgressView.as_view(), name='my-progress'),
     path('import-csv/', ImportAssessmentCSVView.as_view(), name='import-csv'),
+    path('subjects/', SubjectListView.as_view(), name='subject-list'),
 ]

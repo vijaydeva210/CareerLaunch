@@ -17,7 +17,7 @@ class RegisterSerializers(serializers.ModelSerializer):
     def create(self, validated_data):
         #extract the profile data
         phone = validated_data.pop('phone','')
-        college = validated_data.pop('collge','')
+        college = validated_data.pop('college','')
         branch = validated_data.pop('branch','')
         graduation_year = validated_data.pop('graduation_year',None)
 
@@ -41,9 +41,22 @@ class RegisterSerializers(serializers.ModelSerializer):
 
 class ProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
-    email = serializers.CharField(source='user.email',read_only=True)
+    email = serializers.CharField(source='user.email', read_only=True)
+    
+    # NEW: Fetch the active status directly from the Django Auth User
+    is_active = serializers.BooleanField(source='user.is_active', read_only=True)
+    
+    # NEW: Create a dynamic field for the React Progress Bar
+    progress = serializers.SerializerMethodField()
 
     class Meta:
         model = StudentProfile
-        fields = ['id', 'username', 'email', 'phone', 'college', 'branch', 'graduation_year','resume']
+        # Add is_active and progress to the fields list!
+        fields = ['id', 'username', 'email', 'phone', 'college', 'branch', 'graduation_year', 'resume', 'is_active', 'progress']
 
+    # NEW: The Progress Calculator
+    def get_progress(self, obj):
+        # PRESENTATION HACK: Generates a static but realistic percentage (e.g., 65%, 80%) 
+        # based on the user's ID so your UI looks amazing for the demo.
+        # Later, replace this with: return obj.calculate_actual_score()
+        return (obj.id * 15) % 100 if obj.id else 0

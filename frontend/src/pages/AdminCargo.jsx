@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../utils/api'; // The Supercharged Engine
 
 const AdminCargo = () => {
   // --- STATE MANAGEMENT ---
-  const [subjects, setSubjects] = useState(["Python", "Django", "React", "Architecture", "webdev_basics"]);
+  const [subjects, setSubjects] = useState([]); // Starts empty, fetches live from Django
   const [newSubject, setNewSubject] = useState('');
   
   const [uploadType, setUploadType] = useState('learn'); // 'learn' or 'test'
@@ -15,15 +15,42 @@ const AdminCargo = () => {
   const [error, setError] = useState(null);
   const [copiedLabel, setCopiedLabel] = useState(null);
 
+  // --- NEW: THE LIVE DATA FETCHER ---
+  useEffect(() => {
+    const fetchLiveSubjects = async () => {
+      try {
+        // Fetch the subjects from your Django MySQL Database
+        const response = await api.get('/assessments/subjects/'); 
+        
+        // Handle the data safely (extracting 'name' if Django sends objects)
+        const liveSubjects = response.data.map(item => item.name ? item.name : item);
+        setSubjects(liveSubjects);
+      } catch (err) {
+        console.error("Failed to fetch live subjects from Django:", err);
+      }
+    };
+    fetchLiveSubjects();
+  }, []);
+
   // --- HANDLERS ---
   const handleAddSubject = async (e) => {
     e.preventDefault();
     if (!newSubject.trim()) return;
     
-    setSubjects([...subjects, newSubject.trim()]);
-    setMessage(`Successfully added new subject: ${newSubject}`);
-    setNewSubject('');
-    setTimeout(() => setMessage(null), 3000);
+    try {
+      // 1. Actually save the new subject to the MySQL database
+      await api.post('/courses/subjects/', { name: newSubject.trim() });
+      
+      // 2. Update the React UI instantly
+      setSubjects([...subjects, newSubject.trim()]);
+      setMessage(`Successfully added new subject: ${newSubject}`);
+      setNewSubject('');
+      setTimeout(() => setMessage(null), 3000);
+    } catch (err) {
+      console.error("Failed to add subject to database:", err);
+      setError("Failed to create subject in the backend. Does it already exist?");
+      setTimeout(() => setError(null), 3000);
+    }
   };
 
   const handleCopyStructure = (type) => {
@@ -59,16 +86,12 @@ const AdminCargo = () => {
       formData.append('subject', selectedSubject);
       formData.append('type', uploadType);
 
-      // FIX: Notice there are NO manual headers here. Axios handles the multipart boundary perfectly.
       const response = await api.post('/assessments/import-csv/', formData);
-
-      // Display the actual success message from Django
-      setMessage(response.data.message);
+      setMessage(response.data.message || "Upload successful!");
       setFile(null);
       document.getElementById('csv-upload').value = '';
     } catch (err) {
       console.error("Upload failed:", err);
-      // Display the actual error message from Django
       setError(err.response?.data?.error || "Failed to upload CSV. Check your headers.");
     } finally {
       setLoading(false);
@@ -147,8 +170,8 @@ const AdminCargo = () => {
                   className="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 text-white"
                 >
                   <option value="" disabled>-- Select a subject to attach data to --</option>
-                  {subjects.map(sub => (
-                    <option key={sub} value={sub}>{sub}</option>
+                  {subjects.map((sub, index) => (
+                    <option key={index} value={sub}>{sub}</option>
                   ))}
                 </select>
               </div>

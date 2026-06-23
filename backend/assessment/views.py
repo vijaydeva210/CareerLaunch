@@ -9,8 +9,7 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 from tablib import Dataset
 
-from .serializers import AssessmentListSerializer, AssessmentDetailSerializer
-# --- FIX 1: Added LearningQuestion to the imports ---
+from .serializers import AssessmentListSerializer, AssessmentDetailSerializer, SubjectSerializer
 from .models import Subject, Assessment, AssessmentResult, StudentAnswer, LearnedQuestion, QuestionBank, LearningQuestion
 
 
@@ -262,3 +261,8 @@ class ImportAssessmentCSVView(APIView):
             return Response({
                 "error": f"Database rejected the data: {str(e)}"
             }, status=status.HTTP_400_BAD_REQUEST)
+
+class SubjectListView(ListAPIView):
+    queryset = Subject.objects.all()
+    serializer_class = SubjectSerializer
+    permission_classes = [IsAuthenticated]
