@@ -85,13 +85,28 @@ class SubmitAssessmentView(APIView):
         result.passed = passed
         result.save()
 
+        review_data = []
+        for answer in student_answers_to_create:
+            review_data.append({
+                "question_text": answer.question.question_text,
+                "selected_option": answer.selected_option,
+                "correct_option": answer.question.correct_option,
+                "is_correct": answer.is_correct,
+                # Optional: Send the exact text of the options so React can display them easily
+                "option_a": answer.question.option_a,
+                "option_b": answer.question.option_b,
+                "option_c": answer.question.option_c,
+                "option_d": answer.question.option_d,
+            })
+
         return Response({
             "message": "Test successfully graded.",
             "assessment_title": assessment.title,
             "total_questions": total_questions,
             "correct_answers": correct_count,
             "score": final_score,
-            "passed": passed
+            "passed": passed,
+            "review": review_data
         }, status=status.HTTP_200_OK)
 
 
