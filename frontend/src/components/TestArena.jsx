@@ -8,27 +8,21 @@ const TestArena = () => {
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-
-  // --- NEW: State to hold the grading receipt ---
-  const [reviewData, setReviewData] = useState(null);
-  const [testResult, setTestResult] = useState(null);
+  const [submissionResult, setSubmissionResult] = useState(null);
 
   useEffect(() => {
     const fetchAssessment = async () => {
       const assessmentId = localStorage.getItem('careerlaunch_target_test_id');
-      
       if (!assessmentId || assessmentId === 'null' || assessmentId === 'undefined') {
-        alert("Please select a subject from the Study Arena first.");
+        alert("Please select a subject from the Learning Hub first.");
         navigate('/dashboard/learn');
         return;
       }
-
       try {
         const response = await api.get(`/assessments/test/${assessmentId}/`);
         setAssessment(response.data);
       } catch (err) {
         console.error("Test Fetch Error:", err);
-        alert("Failed to load test. Please return to the Learn Arena.");
         navigate('/dashboard/learn');
       } finally {
         setLoading(false);
@@ -53,147 +47,174 @@ const TestArena = () => {
         assessment_id: assessment.id,
         answers: formattedAnswers
       });
-      
-      // --- NEW: Instead of navigating away, we save the results to trigger the Review UI! ---
-      setTestResult({
-        score: response.data.score,
-        passed: response.data.passed,
-        total_questions: response.data.total_questions,
-        correct_answers: response.data.correct_answers,
-        total_marks: assessment.total_marks
-      });
-      setReviewData(response.data.review);
-      
+      setSubmissionResult(response.data);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
       console.error("Submission Error:", err);
-      alert("Submission failed. Check your Django terminal.");
+      alert("Submission failed. Check your network connection.");
     } finally {
       setSubmitting(false);
     }
   };
 
   if (loading) return (
-    <div className="flex justify-center items-center h-64">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+    <div className="flex justify-center items-center h-full min-h-[60vh]">
+      <div className="w-48 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+        <div className="h-full bg-indigo-600 animate-pulse w-1/2 rounded-full"></div>
+      </div>
     </div>
   );
 
   if (!assessment) return null;
 
-  // =========================================================================
-  // NEW UI BLOCK: THE REVIEW SCREEN (Renders if reviewData exists)
-  // =========================================================================
-  if (reviewData) {
+  const progressPercentage = (Object.keys(answers).length / assessment.questions.length) * 100;
+
+  // =========================================================
+  // VIEW MODE 2: THE CLINICAL SCORECARD
+  // =========================================================
+  if (submissionResult) {
+    const { score, passed, total_questions, correct_answers, review } = submissionResult;
     return (
-      <div className="max-w-3xl mx-auto p-6 animate-fade-in">
-        {/* Results Header */}
-        <div className={`p-8 rounded-xl text-center mb-8 shadow-sm border-2 ${
-          testResult.passed ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
-        }`}>
-          <h1 className={`text-4xl font-bold mb-2 ${testResult.passed ? 'text-green-700' : 'text-red-700'}`}>
-            {testResult.passed ? 'Assessment Passed!' : 'Assessment Failed'}
+      <div className="max-w-4xl mx-auto animate-fade-in pb-12">
+        
+        {/* Enterprise Score Hero */}
+        <div className="bg-white border border-slate-200 rounded-[2rem] p-10 sm:p-14 mb-10 shadow-sm text-center relative overflow-hidden">
+          
+          <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold mb-6 border ${
+            passed ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : 'border-rose-200 text-rose-700 bg-rose-50'
+          }`}>
+            <span className={`w-2 h-2 rounded-full ${passed ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+            {passed ? 'Assessment Cleared' : 'Standard Not Met'}
+          </div>
+          
+          <h1 className="text-7xl sm:text-8xl font-black tracking-tight text-slate-900 mb-4">
+            {score}<span className="text-3xl text-slate-400 font-bold">/{assessment.total_marks}</span>
           </h1>
-          <p className="text-xl font-medium text-gray-700 mb-4">
-            You scored <span className="font-bold">{testResult.score}</span> out of {testResult.total_marks}
+          
+          <p className="text-slate-600 font-medium text-lg mb-10">
+            You answered <span className="text-slate-900 font-bold">{correct_answers}</span> out of {total_questions} questions correctly.
           </p>
-          <p className="text-gray-600">
-            Correct Answers: {testResult.correct_answers} / {testResult.total_questions}
-          </p>
+
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <button 
+              onClick={() => { setAnswers({}); setSubmissionResult(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              className="px-8 py-3.5 rounded-xl border-2 border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold transition-all"
+            >
+              Retake Assessment
+            </button>
+            <button 
+              onClick={() => navigate('/dashboard/progress')}
+              className="px-8 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition-all shadow-lg shadow-indigo-600/20"
+            >
+              View Analytics Dashboard
+            </button>
+          </div>
         </div>
 
-        {/* Detailed Review Breakdown */}
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">Review Your Answers</h2>
-        <div className="space-y-6 mb-8">
-          {reviewData.map((reviewItem, index) => (
-            <div key={index} className={`p-6 rounded-xl border-2 ${
-              reviewItem.is_correct ? 'border-green-300 bg-white' : 'border-red-300 bg-red-50/30'
-            }`}>
-              <p className="font-bold text-lg mb-4 text-gray-800">
-                <span className="mr-2">{index + 1}.</span> 
-                {reviewItem.question_text}
-              </p>
+        <h3 className="text-sm font-bold uppercase tracking-widest text-slate-500 mb-6 px-2">Detailed Question Audit</h3>
 
-              <div className="space-y-2">
-                {['A', 'B', 'C', 'D'].map(opt => {
-                  const isSelected = reviewItem.selected_option === opt;
-                  const isCorrectAnswer = reviewItem.correct_option === opt;
-                  
-                  // Color Logic for the review
-                  let optionClass = "bg-white border-gray-200 text-gray-600"; // Default
-                  let badgeClass = "bg-gray-200 text-gray-600";
+        {/* Clinical Breakdown */}
+        <div className="space-y-6">
+          {review.map((item, idx) => {
+            const isCorrect = item.is_correct;
+            return (
+              <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-8 shadow-sm">
+                <div className="flex items-start gap-4 mb-6">
+                  <span className={`flex items-center justify-center shrink-0 w-8 h-8 rounded-lg font-bold text-sm ${
+                    isCorrect ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                  }`}>
+                    {idx + 1}
+                  </span>
+                  <p className="text-lg font-bold text-slate-900 leading-snug mt-1">
+                    {item.question_text}
+                  </p>
+                </div>
 
-                  if (isCorrectAnswer) {
-                    optionClass = "bg-green-100 border-green-500 text-green-800 font-bold shadow-sm";
-                    badgeClass = "bg-green-500 text-white";
-                  } else if (isSelected && !reviewItem.is_correct) {
-                    optionClass = "bg-red-100 border-red-500 text-red-800 font-medium shadow-sm";
-                    badgeClass = "bg-red-500 text-white";
-                  }
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-12">
+                  {['A', 'B', 'C', 'D'].map(opt => {
+                    const isStudentSelection = item.selected_option === opt;
+                    const isCorrectAnswer = item.correct_option === opt;
 
-                  return (
-                    <div key={opt} className={`w-full text-left p-3 rounded-lg border-2 flex items-center ${optionClass}`}>
-                      <span className={`inline-block w-6 h-6 text-center rounded text-sm mr-3 leading-6 ${badgeClass}`}>
-                        {opt}
-                      </span>
-                      <span className="flex-grow">{reviewItem[`option_${opt.toLowerCase()}`]}</span>
-                      
-                      {/* Add icons to make it visually obvious */}
-                      {isCorrectAnswer && <span className="ml-2 text-green-600 font-bold">✓ Correct</span>}
-                      {(isSelected && !reviewItem.is_correct) && <span className="ml-2 text-red-600 font-bold">✗ Your Answer</span>}
-                    </div>
-                  );
-                })}
+                    let boxStyle = "border-slate-200 bg-slate-50 text-slate-500 opacity-60";
+                    let indicator = null;
+
+                    if (isCorrectAnswer) {
+                      boxStyle = "border-emerald-200 bg-emerald-50 text-emerald-900 font-medium opacity-100 shadow-sm";
+                      indicator = <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>;
+                    } else if (isStudentSelection && !isCorrectAnswer) {
+                      boxStyle = "border-rose-200 bg-rose-50 text-rose-900 font-medium opacity-100 shadow-sm";
+                      indicator = <svg className="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12"></path></svg>;
+                    }
+
+                    return (
+                      <div key={opt} className={`p-4 rounded-xl border-2 flex justify-between items-center transition-all ${boxStyle}`}>
+                        <div className="flex items-center gap-3">
+                          <span className={`text-xs font-black ${isCorrectAnswer || isStudentSelection ? 'opacity-100' : 'opacity-40'}`}>{opt}</span>
+                          <span className="text-sm">{item[`option_${opt.toLowerCase()}`]}</span>
+                        </div>
+                        {indicator}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
-
-        <button 
-          onClick={() => navigate('/dashboard/progress')}
-          className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg transition-all"
-        >
-          Return to Dashboard
-        </button>
       </div>
     );
   }
 
-  // =========================================================================
-  // EXISTING UI BLOCK: THE TEST ARENA (Renders if test is currently active)
-  // =========================================================================
+  // =========================================================
+  // VIEW MODE 1: THE TEST ARENA (High Readability)
+  // =========================================================
   return (
-    <div className="max-w-3xl mx-auto p-6 animate-fade-in">
-      <div className="mb-8 border-b border-gray-200 pb-4">
-        <h1 className="text-3xl font-bold text-gray-800">{assessment.title}</h1>
-        <p className="text-gray-500 mt-2">Answer all questions before submitting.</p>
+    <div className="max-w-3xl mx-auto animate-fade-in pb-32">
+      
+      {/* Edge-to-Edge Top Progress Bar */}
+      <div className="fixed top-0 left-0 w-full h-1.5 bg-slate-200 z-50">
+        <div 
+          className="h-full bg-indigo-600 transition-all duration-500 ease-out"
+          style={{ width: `${progressPercentage}%` }}
+        ></div>
       </div>
+
+      <header className="mb-10 border-b border-slate-200 pb-6">
+        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 mb-2">
+          {assessment.title}
+        </h1>
+        <p className="text-slate-500 font-medium text-lg">Select the most accurate response for each question below.</p>
+      </header>
       
       <div className="space-y-8">
         {assessment.questions.map((q, index) => (
-          <div key={q.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-            <p className="font-bold text-lg mb-4 text-gray-800">
-              <span className="text-blue-600 mr-2">{index + 1}.</span> 
-              {q.question_text}
-            </p>
-            <div className="space-y-3">
+          <div key={q.id} className="bg-white border border-slate-200 rounded-2xl p-8 shadow-sm hover:shadow-md transition-shadow">
+            <h3 className="text-lg font-bold text-slate-900 mb-6 leading-relaxed flex items-start gap-4">
+              <span className="flex items-center justify-center shrink-0 w-8 h-8 rounded-lg bg-slate-100 text-slate-600 font-black text-sm">
+                {index + 1}
+              </span>
+              <span className="mt-1">{q.question_text}</span>
+            </h3>
+            
+            <div className="flex flex-col gap-3 pl-12">
               {['A', 'B', 'C', 'D'].map(opt => {
                 const isSelected = answers[q.id] === opt;
                 return (
                   <button
                     key={opt}
                     onClick={() => handleSelectOption(q.id, opt)}
-                    className={`w-full text-left p-4 rounded-lg border-2 font-medium transition-all ${
+                    className={`group relative flex items-center w-full p-4 rounded-xl border-2 text-left transition-all duration-200 ${
                       isSelected 
-                        ? 'bg-blue-50 border-blue-500 text-blue-700 shadow-sm' 
-                        : 'bg-white border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-gray-50'
+                        ? 'border-indigo-600 bg-indigo-50 text-indigo-900 ring-4 ring-indigo-500/10 font-medium shadow-sm' 
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 hover:bg-slate-50 font-medium'
                     }`}
                   >
-                    <span className={`inline-block w-6 h-6 text-center rounded text-sm mr-3 leading-6 ${
-                      isSelected ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'
+                    <div className={`flex items-center justify-center shrink-0 w-6 h-6 rounded-md mr-4 text-xs font-black transition-colors ${
+                      isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-500 group-hover:text-indigo-400 group-hover:bg-indigo-100'
                     }`}>
                       {opt}
-                    </span>
-                    {q[`option_${opt.toLowerCase()}`]}
+                    </div>
+                    <span>{q[`option_${opt.toLowerCase()}`]}</span>
                   </button>
                 );
               })}
@@ -202,21 +223,27 @@ const TestArena = () => {
         ))}
       </div>
 
-      <div className="mt-10 p-6 bg-gray-50 rounded-xl border border-gray-200 flex justify-between items-center">
-        <div className="text-gray-600 font-medium">
-          Answered: <span className="text-blue-600 font-bold">{Object.keys(answers).length}</span> / {assessment.questions.length}
+      {/* Floating Bottom Command Bar */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-3xl bg-white/90 backdrop-blur-md border border-slate-200 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between shadow-2xl shadow-slate-900/10 z-40 gap-4">
+        <div className="flex items-center gap-3 px-2">
+          <div className="text-sm font-bold text-slate-500">
+            <span className="text-indigo-600 text-lg">{Object.keys(answers).length}</span> / {assessment.questions.length} Answered
+          </div>
         </div>
+        
         <button 
           onClick={handleSubmit}
           disabled={Object.keys(answers).length < assessment.questions.length || submitting}
-          className={`py-3 px-8 rounded-lg font-bold text-white transition-all shadow-lg
-            ${Object.keys(answers).length < assessment.questions.length || submitting
-              ? 'bg-gray-400 cursor-not-allowed' 
-              : 'bg-green-600 hover:bg-green-500 hover:scale-105 shadow-green-500/30'}`}
+          className={`w-full sm:w-auto px-8 py-3.5 rounded-xl text-sm font-bold transition-all ${
+            Object.keys(answers).length < assessment.questions.length || submitting
+              ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
+              : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 active:scale-[0.98]'
+          }`}
         >
-          {submitting ? 'Grading...' : 'Submit Assessment'}
+          {submitting ? 'Processing Assessment...' : 'Submit Assessment'}
         </button>
       </div>
+
     </div>
   );
 };

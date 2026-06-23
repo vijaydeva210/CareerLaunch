@@ -3,7 +3,7 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 
 const Login = () => {
   const [formData, setFormData] = useState({
-    username: '', // Using username or email depending on your Django setup, usually SimpleJWT expects 'username'
+    username: '', 
     password: ''
   });
   const [error, setError] = useState('');
@@ -11,8 +11,6 @@ const Login = () => {
   
   const navigate = useNavigate();
   const location = useLocation();
-  
-  // If they just registered, show the success message from Signup.jsx
   const successMessage = location.state?.message;
 
   const handleChange = (e) => {
@@ -28,11 +26,9 @@ const Login = () => {
     setLoading(true);
 
     try {
-      // 1. Get the Keys
       const response = await fetch('http://127.0.0.1:8000/api/accounts/login/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // SimpleJWT usually expects the field to be called 'username', even if you type an email into it.
         body: JSON.stringify({ 
           username: formData.username, 
           password: formData.password 
@@ -42,12 +38,9 @@ const Login = () => {
       const data = await response.json();
 
       if (response.ok) {
-        // Store the tokens securely
         localStorage.setItem('access', data.access);
         localStorage.setItem('refresh', data.refresh);
 
-        // 2. The Badge Check (Traffic Cop)
-        // We ping an admin-only endpoint to see what Django says
         const badgeCheck = await fetch('http://127.0.0.1:8000/api/accounts/students/', {
             method: 'GET',
             headers: {
@@ -72,74 +65,139 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-gray-800 rounded-xl shadow-2xl p-8 border border-gray-700">
+    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 sm:p-8 font-sans">
+      
+      {/* The Main Split-Screen Container */}
+      <div className="max-w-6xl w-full bg-white rounded-[2rem] shadow-2xl overflow-hidden flex min-h-[600px] border border-slate-700">
         
-        <div className="text-center mb-8">
-          <div className="mx-auto w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center mb-4 shadow-lg shadow-blue-500/30">
-            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
-            </svg>
-          </div>
-          <h2 className="text-3xl font-bold text-white tracking-tight">Welcome Back</h2>
-          <p className="text-gray-400 mt-2">Enter your credentials to access the portal</p>
-        </div>
-
-        {successMessage && (
-          <div className="bg-green-500/10 border border-green-500 text-green-400 p-3 rounded-lg text-sm mb-6 text-center">
-            {successMessage}
-          </div>
-        )}
-
-        {error && (
-          <div className="bg-red-500/10 border border-red-500 text-red-500 p-3 rounded-lg text-sm mb-6 text-center">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleLogin} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Username</label>
-            <input
-              type="text"
-              name="username"
-              value={formData.username}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white transition-colors"
-              placeholder="Dev_210"
-            />
+        {/* LEFT SIDE: The Functional Form (Clean, White, Trustworthy) */}
+        <div className="w-full lg:w-1/2 p-8 sm:p-12 md:p-16 flex flex-col justify-center">
+          
+          <div className="mb-10">
+            {/* Logo perfectly matched to the video's Cyan/Blue flare */}
+            <div className="flex items-center gap-3 mb-12">
+              <div className="w-10 h-10 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-cyan-500/30">
+                C
+              </div>
+              <span className="text-2xl font-black tracking-tight text-slate-900">CareerLaunch</span>
+            </div>
+            
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+              Welcome back
+            </h2>
+            <p className="text-slate-500 mt-3 text-lg font-medium">
+              Initialize your session to access the dashboard.
+            </p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Password</label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white transition-colors"
-              placeholder="••••••••"
-            />
-          </div>
+          {successMessage && (
+            <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-xl text-sm font-semibold mb-6 flex items-center gap-3">
+              <svg className="w-5 h-5 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+              {successMessage}
+            </div>
+          )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200 shadow-lg shadow-blue-500/30"
-          >
-            {loading ? 'Authenticating...' : 'Sign In'}
-          </button>
-        </form>
+          {error && (
+            <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-xl text-sm font-semibold mb-6 flex items-center gap-3">
+              <svg className="w-5 h-5 text-rose-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" /></svg>
+              {error}
+            </div>
+          )}
 
-        <div className="mt-6 text-center">
-          <p className="text-gray-400 text-sm">
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Username</label>
+              <input
+                type="text"
+                name="username"
+                value={formData.username}
+                onChange={handleChange}
+                required
+                className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-cyan-500/10 focus:border-cyan-500 text-slate-900 placeholder-slate-400 font-medium transition-all outline-none"
+                placeholder="Enter your username"
+              />
+            </div>
+
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-sm font-bold text-slate-700">Password</label>
+                {/* Ready to be wired to your Django reset flow */}
+                <Link to="/forgot-password" className="text-sm font-bold text-cyan-600 hover:text-cyan-500 transition-colors">
+                  Forgot password?
+                </Link>
+              </div>
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-cyan-500/10 focus:border-cyan-500 text-slate-900 placeholder-slate-400 font-medium transition-all outline-none"
+                placeholder="••••••••"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-slate-900 hover:bg-slate-800 active:scale-[0.98] text-white font-bold py-4 px-4 rounded-xl transition-all shadow-lg shadow-slate-900/20"
+            >
+              {loading ? 'Authenticating...' : 'Sign In'}
+            </button>
+          </form>
+
+          <p className="mt-8 text-slate-500 font-medium text-center">
             Don't have an account?{' '}
-            <Link to="/signup" className="text-blue-400 hover:text-blue-300 font-semibold transition-colors">
-              Sign up as a student
+            <Link to="/signup" className="text-cyan-600 hover:text-cyan-700 font-bold transition-colors">
+              Sign up for free
             </Link>
           </p>
+        </div>
+
+        {/* RIGHT SIDE: The Cinematic Match (Gritty Slate & Cyan Flares) */}
+        <div className="hidden lg:flex w-1/2 bg-slate-950 relative items-center justify-center p-12 overflow-hidden">
+          
+          {/* Abstract Cinematic Background */}
+          <div className="absolute inset-0 z-0">
+            {/* Heavy metallic base gradient */}
+            <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-zinc-950"></div>
+            
+            {/* Glowing Orbs mapping to the video's lens flares */}
+            <div className="absolute top-[20%] right-[10%] w-96 h-96 bg-cyan-500/20 blur-[100px] rounded-full animate-pulse"></div>
+            <div className="absolute bottom-[10%] left-[10%] w-72 h-72 bg-blue-600/20 blur-[100px] rounded-full"></div>
+            
+            {/* Industrial Grid Pattern mimicking the scratches/tech vibe */}
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:32px_32px]"></div>
+          </div>
+
+          {/* Floating Glass Showcase Card */}
+          <div className="relative z-10 w-full max-w-md bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-3xl p-10 shadow-2xl">
+            <div className="flex gap-2 mb-8 opacity-50">
+              <div className="w-3 h-3 rounded-full bg-slate-600"></div>
+              <div className="w-3 h-3 rounded-full bg-slate-600"></div>
+              <div className="w-3 h-3 rounded-full bg-slate-600"></div>
+            </div>
+            
+            <h3 className="text-3xl font-black text-white leading-tight mb-4 tracking-tight drop-shadow-md">
+              Prepare for launch.
+            </h3>
+            
+            <p className="text-cyan-100/70 text-lg font-medium leading-relaxed mb-8">
+              CareerLaunch provides the exact technical roadmaps and assessment engines you need to crack enterprise placements.
+            </p>
+
+            {/* Mock System Status */}
+            <div className="flex items-center gap-4 pt-8 border-t border-white/10">
+              <div className="w-12 h-12 rounded-full bg-slate-900/80 flex items-center justify-center border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.3)]">
+                <svg className="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+              </div>
+              <div>
+                <p className="text-white font-bold tracking-wide">System Online</p>
+                <p className="text-cyan-400/80 text-sm font-medium">Servers fully operational</p>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
